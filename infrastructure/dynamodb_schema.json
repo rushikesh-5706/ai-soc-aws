@@ -1,14 +1,1 @@
-Table: AISoc-Incidents
-├── incident_id (String) ← Partition Key — format: "INC-{uuid4[:8]}"
-├── timestamp (String) ← Sort Key — ISO 8601: "2024-01-15T10:30:00Z"
-├── alert_type (String) ← e.g., "UnauthorizedAccess:EC2/SSHBruteForce"
-├── severity (String) ← "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
-├── resource_id (String) ← AWS resource ARN or ID
-├── resource_type (String) ← "EC2" | "IAM" | "S3" | "RDS"
-├── source_ip (String) ← IP address that triggered alert
-├── agent_reasoning (String) ← Full reasoning text from Claude
-├── action_taken (String) ← "QUARANTINE_TAG" | "REVOKED_KEY" | "IGNORED" | "ESCALATED"
-├── action_result (String) ← "SUCCESS" | "FAILED" | "SKIPPED"
-├── false_positive (Boolean) ← true/false
-├── status (String) ← "OPEN" | "RESOLVED" | "INVESTIGATING"
-└── raw_alert (String) ← Full JSON of original alert (stringified)
+
