@@ -1,0 +1,71 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AI SOC Tools API",
+    "version": "1.0.0",
+    "description": "Tools available to the AI SOC security analyst agent"
+  },
+  "paths": {
+    "/get_logs": {
+      "get": {
+        "summary": "Retrieve CloudTrail logs for a resource",
+        "operationId": "get_logs",
+        "parameters": [
+          {"name": "resource_id", "in": "query", "required": true, "schema": {"type": "string"}},
+          {"name": "resource_type", "in": "query", "required": true, "schema": {"type": "string"}},
+          {"name": "time_window_hours", "in": "query", "required": false, "schema": {"type": "integer", "default": 24}}
+        ]
+      }
+    },
+    "/take_action": {
+      "post": {
+        "summary": "Execute remediation action",
+        "operationId": "take_action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action_type", "resource_id", "resource_type", "reason", "severity"],
+                "properties": {
+                  "action_type": {"type": "string", "enum": ["apply_quarantine_tag", "flag_iam_key", "recommend_only"]},
+                  "resource_id": {"type": "string"},
+                  "resource_type": {"type": "string"},
+                  "reason": {"type": "string"},
+                  "severity": {"type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/save_incident": {
+      "post": {
+        "summary": "Save incident to DynamoDB",
+        "operationId": "save_incident",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["alert_type", "severity", "resource_id", "resource_type", "agent_reasoning", "action_taken", "action_result"],
+                "properties": {
+                  "alert_type": {"type": "string"},
+                  "severity": {"type": "string"},
+                  "resource_id": {"type": "string"},
+                  "resource_type": {"type": "string"},
+                  "source_ip": {"type": "string"},
+                  "agent_reasoning": {"type": "string"},
+                  "action_taken": {"type": "string"},
+                  "action_result": {"type": "string"},
+                  "false_positive": {"type": "string"}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
