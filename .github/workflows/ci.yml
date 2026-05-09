@@ -1,0 +1,233 @@
+name: AI SOC CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+      - "feature/**"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # Job 1: Lint & validate Python Lambda functions
+  # ─────────────────────────────────────────────────────────────────
+  lint-python:
+    name: Lint Python Lambda Functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linting tools
+        run: pip install flake8 pylint
+
+      - name: Lint AISoc-alerttrigger
+        run: flake8 backend/lambda/AISoc-alerttrigger/lambda_function.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Lint AISoc-ChatHandler
+        run: flake8 backend/lambda/AISoc-ChatHandler/lambda_function.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Lint AISoc-GetIncidents
+        run: flake8 backend/lambda/AISoc-GetIncidents/lambda_function.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Lint get_logs
+        run: flake8 backend/lambda/get_logs/lambda_function.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Lint save_incident
+        run: flake8 backend/lambda/save_incident/lambda_function.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Lint take_action
+        run: flake8 backend/lambda/take_action/lambda_function.py --max-line-length=120 --ignore=E501,W503
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 2: Validate JSON configuration files
+  # ─────────────────────────────────────────────────────────────────
+  validate-json:
+    name: Validate JSON Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate infrastructure JSON files
+        run: |
+          echo "Validating infrastructure/dynamodb_schema.json..."
+          python3 -c "import json; json.load(open('infrastructure/dynamodb_schema.json'))"
+
+          echo "Validating infrastructure/eventbridge_rule.json..."
+          python3 -c "import json; json.load(open('infrastructure/eventbridge_rule.json'))"
+
+          echo "Validating infrastructure/iam_policies/bedrock_agent_role.json..."
+          python3 -c "import json; json.load(open('infrastructure/iam_policies/bedrock_agent_role.json'))"
+
+          echo "Validating infrastructure/iam_policies/lambda_execution_role.json..."
+          python3 -c "import json; json.load(open('infrastructure/iam_policies/lambda_execution_role.json'))"
+
+          echo "Validating infrastructure/iam_policies/eventbridge_role.json..."
+          python3 -c "import json; json.load(open('infrastructure/iam_policies/eventbridge_role.json'))"
+
+          echo "Validating backend/agent/openapi_schema.json..."
+          python3 -c "import json; json.load(open('backend/agent/openapi_schema.json'))"
+
+          echo "All JSON files valid ✅"
+
+      - name: Validate mock alert payloads
+        run: |
+          for f in backend/mock_data/*.json; do
+            echo "Validating $f..."
+            python3 -c "import json; json.load(open('$f'))"
+          done
+          echo "All mock alert payloads valid ✅"
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 3: Validate repository structure matches README
+  # ─────────────────────────────────────────────────────────────────
+  validate-structure:
+    name: Validate Repository Structure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check all required files exist
+        run: |
+          REQUIRED_FILES=(
+            "README.md"
+            "ARCHITECTURE.md"
+            "CONTRIBUTING.md"
+            "SECURITY.md"
+            ".gitignore"
+            "backend/agent/agent_instructions.txt"
+            "backend/agent/openapi_schema.json"
+            "backend/lambda/AISoc-alerttrigger/lambda_function.py"
+            "backend/lambda/AISoc-ChatHandler/lambda_function.py"
+            "backend/lambda/AISoc-GetIncidents/lambda_function.py"
+            "backend/lambda/get_logs/lambda_function.py"
+            "backend/lambda/save_incident/lambda_function.py"
+            "backend/lambda/take_action/lambda_function.py"
+            "backend/mock_data/test_alert_1_ssh_bruteforce.json"
+            "backend/mock_data/test_alert_2_iam_anomaly.json"
+            "backend/mock_data/test_alert_3_false_positive.json"
+            "backend/mock_data/test_alert_4_crypto_mining.json"
+            "backend/mock_data/test_alert_5_s3_malicious_ip.json"
+            "frontend/soc-dashboard/src/App.js"
+            "frontend/soc-dashboard/src/App.css"
+            "frontend/soc-dashboard/src/api.js"
+            "frontend/soc-dashboard/public/index.html"
+            "frontend/soc-dashboard/package.json"
+            "infrastructure/dynamodb_schema.json"
+            "infrastructure/eventbridge_rule.json"
+            "infrastructure/iam_policies/bedrock_agent_role.json"
+            "infrastructure/iam_policies/lambda_execution_role.json"
+            "infrastructure/iam_policies/eventbridge_role.json"
+            "docs/DEPLOYMENT.md"
+            "docs/API_REFERENCE.md"
+            "docs/test_execution_report.md"
+            ".github/workflows/ci.yml"
+          )
+
+          ALL_OK=true
+          for FILE in "${REQUIRED_FILES[@]}"; do
+            if [ -f "$FILE" ]; then
+              echo "✅ $FILE"
+            else
+              echo "❌ MISSING: $FILE"
+              ALL_OK=false
+            fi
+          done
+
+          if [ "$ALL_OK" = false ]; then
+            echo ""
+            echo "ERROR: One or more required files are missing."
+            exit 1
+          fi
+
+          echo ""
+          echo "Repository structure valid ✅"
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 4: Check for accidental secrets
+  # ─────────────────────────────────────────────────────────────────
+  security-scan:
+    name: Scan for Accidental Secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for hardcoded AWS credentials
+        run: |
+          echo "Checking for hardcoded AWS access keys..."
+
+          # Pattern: AKIA... (AWS Access Key ID)
+          if grep -rn --include="*.py" --include="*.json" --include="*.js" \
+            "AKIA[A-Z0-9]{16}" . \
+            --exclude-dir=node_modules --exclude-dir=.git 2>/dev/null | grep -v ".github"; then
+            echo "WARNING: Possible hardcoded AWS Access Key found!"
+            exit 1
+          fi
+
+          echo "No hardcoded credentials found ✅"
+
+      - name: Check .env files are not committed
+        run: |
+          if find . -name ".env" -not -path "./.git/*" -not -path "./node_modules/*" | grep -q ".env"; then
+            echo "ERROR: .env file found in repository. Remove it immediately."
+            exit 1
+          fi
+          echo ".env files not committed ✅"
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 5: Build React frontend (validate it compiles)
+  # ─────────────────────────────────────────────────────────────────
+  build-frontend:
+    name: Build React Dashboard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/soc-dashboard/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend/soc-dashboard
+        run: npm ci
+
+      - name: Build React app
+        working-directory: frontend/soc-dashboard
+        env:
+          CI: false
+        run: npm run build
+
+      - name: Verify build output exists
+        run: |
+          if [ -d "frontend/soc-dashboard/build" ]; then
+            echo "Build directory exists ✅"
+            ls -la frontend/soc-dashboard/build/
+          else
+            echo "ERROR: Build directory not found"
+            exit 1
+          fi

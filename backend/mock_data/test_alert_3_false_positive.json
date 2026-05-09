@@ -1,0 +1,20 @@
+{
+  "source": "custom.aisoc.mock",
+  "detail_type": "MockSecurityAlert",
+  "detail": {
+    "alert_type": "UnauthorizedAccess:EC2/SSHBruteForce",
+    "resource_id": "i-0internal-dev001",
+    "resource_type": "EC2",
+    "severity": 3.0,
+    "source_ip": "10.0.1.50",
+    "region": "us-east-1",
+    "timestamp": "2024-01-15T09:00:00Z",
+    "description": "SSH login attempts detected to dev instance.",
+    "account_id": "123456789012",
+    "additional_info": {
+      "environment": "development",
+      "internal_ip": true,
+      "note": "Source is internal corporate IP"
+    }
+  }
+}

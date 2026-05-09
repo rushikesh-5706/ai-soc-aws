@@ -1,0 +1,25 @@
+{
+  "Name": "AISoc-SecurityAlertRouter",
+  "EventBusName": "default",
+  "State": "ENABLED",
+  "Description": "Routes GuardDuty findings and mock security alerts to the AISoc-alerttrigger Lambda for AI-powered triage by ARIA",
+  "EventPattern": {
+    "$or": [
+      {
+        "source": ["aws.guardduty"],
+        "detail-type": ["GuardDuty Finding"]
+      },
+      {
+        "source": ["custom.aisoc.mock"],
+        "detail-type": ["MockSecurityAlert"]
+      }
+    ]
+  },
+  "Targets": [
+    {
+      "Id": "AISoc-alerttrigger-target",
+      "Arn": "arn:aws:lambda:us-east-1:YOUR_ACCOUNT_ID:function:AISoc-alerttrigger",
+      "RoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/AISoc-EventBridgeRole"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "source": "custom.aisoc.mock",
+  "detail_type": "MockSecurityAlert",
+  "detail": {
+    "alert_type": "Discovery:S3/MaliciousIPCaller",
+    "resource_id": "arn:aws:s3:::company-data-bucket-mock",
+    "resource_type": "S3",
+    "severity": 7.5,
+    "source_ip": "198.51.100.99",
+    "region": "us-east-1",
+    "timestamp": "2024-01-15T13:30:00Z",
+    "description": "S3 bucket company-data-bucket-mock was accessed by IP 198.51.100.99, which is included on a threat intelligence list. 47 objects were accessed within a 3-minute window.",
+    "account_id": "123456789012",
+    "additional_info": {
+      "bucket_name": "company-data-bucket-mock",
+      "threat_list_name": "ProofPoint",
+      "objects_accessed": 47,
+      "data_transferred_mb": 220,
+      "access_type": "GetObject",
+      "time_window_minutes": 3
+    }
+  }
+}

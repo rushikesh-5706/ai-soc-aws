@@ -1,0 +1,45 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvokeLambdaTools",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:InvokeFunction"
+      ],
+      "Resource": [
+        "arn:aws:lambda:us-east-1:*:function:AISoc-GetLogs",
+        "arn:aws:lambda:us-east-1:*:function:AISoc-TakeAction",
+        "arn:aws:lambda:us-east-1:*:function:AISoc-SaveIncident"
+      ]
+    },
+    {
+      "Sid": "BedrockModelAccess",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": "arn:aws:bedrock:us-east-1::foundation-model/meta.llama3-8b-instruct-v1:0"
+    },
+    {
+      "Sid": "BedrockAgentActions",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:CreateAgent",
+        "bedrock:UpdateAgent",
+        "bedrock:PrepareAgent",
+        "bedrock:GetAgent",
+        "bedrock:InvokeAgent",
+        "bedrock:CreateAgentAlias",
+        "bedrock:GetAgentAlias",
+        "bedrock:ListAgentAliases",
+        "bedrock:CreateAgentActionGroup",
+        "bedrock:UpdateAgentActionGroup",
+        "bedrock:GetAgentActionGroup",
+        "bedrock:ListAgentActionGroups"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

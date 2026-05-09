@@ -1,0 +1,20 @@
+{
+  "source": "custom.aisoc.mock",
+  "detail_type": "MockSecurityAlert",
+  "detail": {
+    "alert_type": "IAMUser:AnomalousBehavior",
+    "resource_id": "AIDA-MOCK-USER-TEST",
+    "resource_type": "IAM",
+    "severity": 9.0,
+    "source_ip": "203.0.113.77",
+    "region": "us-east-1",
+    "timestamp": "2024-01-15T11:00:00Z",
+    "description": "An IAM user called APIs that are unusual for this user. These APIs were never called by this user in the past 90 days. APIs: CreateAccessKey, ListUsers, AttachUserPolicy.",
+    "username": "backup-service-user",
+    "account_id": "123456789012",
+    "additional_info": {
+      "unusual_apis": ["CreateAccessKey", "ListUsers", "AttachUserPolicy"],
+      "days_since_last_similar": 90
+    }
+  }
+}

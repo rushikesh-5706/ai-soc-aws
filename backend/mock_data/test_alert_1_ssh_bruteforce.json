@@ -1,0 +1,20 @@
+{
+  "source": "custom.aisoc.mock",
+  "detail_type": "MockSecurityAlert",
+  "detail": {
+    "alert_type": "UnauthorizedAccess:EC2/SSHBruteForce",
+    "resource_id": "i-0abc123mock456",
+    "resource_type": "EC2",
+    "severity": 7.0,
+    "source_ip": "185.220.101.34",
+    "region": "us-east-1",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "description": "185.220.101.34 is performing SSH brute force attacks against instance i-0abc123mock456. There were 300 login attempts in 5 minutes.",
+    "account_id": "123456789012",
+    "additional_info": {
+      "threat_list": "TorExitNode",
+      "login_attempts": 300,
+      "time_window_minutes": 5
+    }
+  }
+}

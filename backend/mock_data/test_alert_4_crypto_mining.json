@@ -1,0 +1,23 @@
+{
+  "source": "custom.aisoc.mock",
+  "detail_type": "MockSecurityAlert",
+  "detail": {
+    "alert_type": "CryptoCurrency:EC2/BitcoinTool.B",
+    "resource_id": "i-0crypto999mock88",
+    "resource_type": "EC2",
+    "severity": 9.5,
+    "source_ip": "45.142.212.100",
+    "region": "us-east-1",
+    "timestamp": "2024-01-15T12:00:00Z",
+    "description": "EC2 instance i-0crypto999mock88 is communicating with Bitcoin mining pool stratum.bitcoin.cz on port 3333. CPU utilization is at 98%.",
+    "account_id": "123456789012",
+    "additional_info": {
+      "mining_pool": "stratum.bitcoin.cz",
+      "port": 3333,
+      "cpu_utilization_percent": 98,
+      "network_bytes_out_mb": 450,
+      "tool_name": "xmrig",
+      "launched_by_role": "arn:aws:iam::123456789012:role/unknown-role"
+    }
+  }
+}

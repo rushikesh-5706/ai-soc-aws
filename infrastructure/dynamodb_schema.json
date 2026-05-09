@@ -1,0 +1,87 @@
+{
+  "TableName": "AISoc-Incidents",
+  "BillingMode": "PAY_PER_REQUEST",
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "incident_id",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "timestamp",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "severity",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "status",
+      "AttributeType": "S"
+    }
+  ],
+  "KeySchema": [
+    {
+      "AttributeName": "incident_id",
+      "KeyType": "HASH"
+    },
+    {
+      "AttributeName": "timestamp",
+      "KeyType": "RANGE"
+    }
+  ],
+  "GlobalSecondaryIndexes": [
+    {
+      "IndexName": "severity-index",
+      "KeySchema": [
+        {
+          "AttributeName": "severity",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "timestamp",
+          "KeyType": "RANGE"
+        }
+      ],
+      "Projection": {
+        "ProjectionType": "ALL"
+      }
+    },
+    {
+      "IndexName": "status-index",
+      "KeySchema": [
+        {
+          "AttributeName": "status",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "timestamp",
+          "KeyType": "RANGE"
+        }
+      ],
+      "Projection": {
+        "ProjectionType": "ALL"
+      }
+    }
+  ],
+  "SSESpecification": {
+    "Enabled": true
+  },
+  "TimeToLiveSpecification": {
+    "AttributeName": "ttl",
+    "Enabled": true
+  },
+  "Tags": [
+    {
+      "Key": "Project",
+      "Value": "AI-SOC-AWS"
+    },
+    {
+      "Key": "Team",
+      "Value": "Team-14"
+    },
+    {
+      "Key": "Environment",
+      "Value": "Production"
+    }
+  ]
+}
