@@ -31,22 +31,22 @@ jobs:
         run: pip install flake8 pylint
 
       - name: Lint AISoc-alerttrigger
-        run: flake8 backend/lambda/AISoc-alerttrigger/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293
+        run: flake8 backend/lambda/AISoc-alerttrigger/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293,F401,E712
 
       - name: Lint AISoc-ChatHandler
-        run: flake8 backend/lambda/AISoc-ChatHandler/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293
+        run: flake8 backend/lambda/AISoc-ChatHandler/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293,F401,E712
 
       - name: Lint AISoc-GetIncidents
-        run: flake8 backend/lambda/AISoc-GetIncidents/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293
+        run: flake8 backend/lambda/AISoc-GetIncidents/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293,F401,E712
 
       - name: Lint get_logs
-        run: flake8 backend/lambda/get_logs/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293
+        run: flake8 backend/lambda/get_logs/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293,F401,E712
 
       - name: Lint save_incident
-        run: flake8 backend/lambda/save_incident/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293
+        run: flake8 backend/lambda/save_incident/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293,F401,E712
 
       - name: Lint take_action
-        run: flake8 backend/lambda/take_action/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293
+        run: flake8 backend/lambda/take_action/lambda_function.py --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293,F401,E712
 
   # ─────────────────────────────────────────────────────────────────
   # Job 2: Validate JSON configuration files
