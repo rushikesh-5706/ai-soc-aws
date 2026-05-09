@@ -229,7 +229,7 @@ graph TD
     end
 
     R1 -->|lambda:InvokeFunction| Tools[get_logs · take_action · save_incident]
-    R1 -->|bedrock:InvokeModel| Nova[Llama 3.1 8B Instruct Model]
+    R1 -->|bedrock:InvokeModel| LlamaModel[Llama 3.1 8B Instruct Model]
     R2 -->|dynamodb:PutItem,Scan,Query| DB[(AISoc-Incidents)]
     R2 -->|cloudtrail:LookupEvents| CT[CloudTrail]
     R2 -->|ec2:CreateTags,DescribeInstances| EC2[EC2 Resources]
