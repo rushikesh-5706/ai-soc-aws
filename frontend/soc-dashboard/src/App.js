@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import axios from "axios";
 
 import {
@@ -10,7 +10,8 @@ import {
   Search,
   Moon,
   Sun,
-  Send
+  Send,
+  Trash2
 } from "lucide-react";
 
 import {
@@ -48,7 +49,7 @@ function App() {
   // UI STATES
 
   const [activeMenu, setActiveMenu] =
-    useState("dashboard");
+    useState("landing");
 
   const [darkMode, setDarkMode] =
     useState(true);
@@ -67,6 +68,13 @@ function App() {
   const [searchTerm, setSearchTerm] =
     useState("");
 
+  const [activeFilter, setActiveFilter] = useState("ALL");
+  const [analyzedIncidents, setAnalyzedIncidents] = useState(new Set());
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const chatEndRef = useRef(null);
+  const floatingChatEndRef = useRef(null);
+
   // CHAT
 
   const [chatMessages, setChatMessages] =
@@ -84,6 +92,11 @@ function App() {
     fetchIncidents();
   }, []);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    floatingChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatOpen, activeMenu]);
+
   const fetchIncidents = async () => {
 
     try {
@@ -97,9 +110,18 @@ function App() {
           ? JSON.parse(response.data.body)
           : response.data;
 
-      setIncidents(data.incidents || []);
+      const deletedIds = JSON.parse(localStorage.getItem('deletedIncidents') || '[]');
+      const processedIncidents = (data.incidents || [])
+        .map((inc, i) => ({ ...inc, id: i }))
+        .filter(inc => !deletedIds.includes(inc.id));
+      setIncidents(processedIncidents);
 
-      setStats(data.stats || {});
+      setStats({
+        total: processedIncidents.length,
+        critical: processedIncidents.filter(inc => inc.severity?.toUpperCase() === 'CRITICAL').length,
+        high: processedIncidents.filter(inc => inc.severity?.toUpperCase() === 'HIGH').length,
+        auto_actioned: processedIncidents.filter(inc => inc.action_taken && inc.action_taken.toUpperCase() !== 'NONE').length,
+      });
 
       setGraphData(data.graphData || []);
 
@@ -119,8 +141,10 @@ function App() {
   // SEARCH FILTER
 
   const filteredIncidents = useMemo(() => {
-
     return incidents.filter((item) => {
+      if (activeFilter === "CRITICAL" && item.severity?.toUpperCase() !== "CRITICAL") return false;
+      if (activeFilter === "HIGH" && item.severity?.toUpperCase() !== "HIGH") return false;
+      if (activeFilter === "AUTO_ACTIONED" && (!item.action_taken || item.action_taken.toUpperCase() === "NONE")) return false;
 
       const search =
         searchTerm.toLowerCase();
@@ -143,8 +167,7 @@ function App() {
           .includes(search)
       );
     });
-
-  }, [searchTerm, incidents]);
+  }, [searchTerm, incidents, activeFilter]);
 
   // AI CHAT
 
@@ -228,12 +251,100 @@ function App() {
     setLoading(false);
   };
 
+  const handleDeleteIncident = (incidentId) => {
+    const deletedIds = JSON.parse(localStorage.getItem('deletedIncidents') || '[]');
+    if (!deletedIds.includes(incidentId)) {
+      deletedIds.push(incidentId);
+      localStorage.setItem('deletedIncidents', JSON.stringify(deletedIds));
+    }
+
+    setIncidents(prev => {
+      const newIncidents = prev.filter(inc => inc.id !== incidentId);
+      
+      setStats({
+        total: newIncidents.length,
+        critical: newIncidents.filter(inc => inc.severity?.toUpperCase() === 'CRITICAL').length,
+        high: newIncidents.filter(inc => inc.severity?.toUpperCase() === 'HIGH').length,
+        auto_actioned: newIncidents.filter(inc => inc.action_taken && inc.action_taken.toUpperCase() !== 'NONE').length,
+      });
+      
+      return newIncidents;
+    });
+  };
+
+  const handleIncidentChat = (incidentName, incidentId) => {
+    setAnalyzedIncidents(prev => new Set(prev).add(incidentId));
+    setActiveMenu("chat");
+    setChatOpen(true);
+    
+    const prompt = `Analyze incident: ${incidentName}`;
+    
+    const userMessage = {
+      sender: "user",
+      text: prompt
+    };
+
+    setChatMessages((prev) => [
+      ...prev,
+      userMessage
+    ]);
+
+    setLoading(true);
+
+    axios.post(
+      `${API_BASE_URL}/chat`,
+      {
+        message: prompt
+      }
+    ).then((response) => {
+      let aiResponse = "No response from AI";
+      if (response.data.body) {
+        const parsed = typeof response.data.body === "string" ? JSON.parse(response.data.body) : response.data.body;
+        aiResponse = parsed.response || parsed.answer || aiResponse;
+      } else {
+        aiResponse = response.data.response || response.data.answer || aiResponse;
+      }
+      setChatMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: aiResponse }
+      ]);
+    }).catch((error) => {
+      console.log(error);
+      setChatMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "Unable to connect to AI assistant." }
+      ]);
+    }).finally(() => {
+      setLoading(false);
+    });
+  };
+
   const COLORS = [
     "#ff4d6d",
     "#ff9f1c",
     "#3a86ff",
     "#00d084"
   ];
+
+  if (activeMenu === "landing") {
+    return (
+      <div className={darkMode ? "app dark" : "app light"}>
+        <div className="landing-page">
+          <div className="landing-logo">
+            <Shield size={56} color="#7b61ff" />
+            <h1>AI SOC</h1>
+          </div>
+          <div className="landing-content">
+            <h2>Next-Gen Cloud Security</h2>
+            <p>Monitor threats, analyze incidents, and automate responses with an industry-grade, AI-powered security operations center.</p>
+            <button className="btn-get-started" onClick={() => setActiveMenu("dashboard")}>
+              Get Started
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
 
@@ -374,9 +485,29 @@ function App() {
 
             </div>
 
-            <button className="icon-btn">
-              <Bell size={18} />
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button 
+                className="icon-btn" 
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Bell size={18} />
+                {incidents.length - analyzedIncidents.size > 0 && (
+                  <span className="notification-badge">
+                    {incidents.length - analyzedIncidents.size}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <div className="notification-dropdown">
+                  <h4>Notifications</h4>
+                  {incidents.length - analyzedIncidents.size > 0 ? (
+                    <p>You have {incidents.length - analyzedIncidents.size} new incidents. Analyze them with AI.</p>
+                  ) : (
+                    <p>All caught up!</p>
+                  )}
+                </div>
+              )}
+            </div>
 
             <button
               className="icon-btn"
@@ -401,32 +532,36 @@ function App() {
 
             <div className="stats-grid">
 
-              <div className="card">
-                <h4>Total Incidents</h4>
-                <h2>
-                  {stats.total || 0}
-                </h2>
+              <div className={`card ${activeFilter === 'ALL' ? 'active-filter' : ''}`} onClick={() => setActiveFilter('ALL')} style={{cursor: 'pointer'}}>
+                <div className="card-icon"><Shield size={24} color="#7b61ff" /></div>
+                <div>
+                  <h4>Total Incidents</h4>
+                  <h2>{stats.total || 0}</h2>
+                </div>
               </div>
 
-              <div className="card red">
-                <h4>Critical</h4>
-                <h2>
-                  {stats.critical || 0}
-                </h2>
+              <div className={`card red ${activeFilter === 'CRITICAL' ? 'active-filter' : ''}`} onClick={() => setActiveFilter('CRITICAL')} style={{cursor: 'pointer'}}>
+                <div className="card-icon"><Activity size={24} color="#ff4d6d" /></div>
+                <div>
+                  <h4>Critical</h4>
+                  <h2>{stats.critical || 0}</h2>
+                </div>
               </div>
 
-              <div className="card orange">
-                <h4>High Severity</h4>
-                <h2>
-                  {stats.high || 0}
-                </h2>
+              <div className={`card orange ${activeFilter === 'HIGH' ? 'active-filter' : ''}`} onClick={() => setActiveFilter('HIGH')} style={{cursor: 'pointer'}}>
+                <div className="card-icon"><Activity size={24} color="#ff9f1c" /></div>
+                <div>
+                  <h4>High Severity</h4>
+                  <h2>{stats.high || 0}</h2>
+                </div>
               </div>
 
-              <div className="card green">
-                <h4>Auto Actioned</h4>
-                <h2>
-                  {stats.auto_actioned || 0}
-                </h2>
+              <div className={`card green ${activeFilter === 'AUTO_ACTIONED' ? 'active-filter' : ''}`} onClick={() => setActiveFilter('AUTO_ACTIONED')} style={{cursor: 'pointer'}}>
+                <div className="card-icon"><Shield size={24} color="#0B8A5A" /></div>
+                <div>
+                  <h4>Auto Actioned</h4>
+                  <h2>{stats.auto_actioned || 0}</h2>
+                </div>
               </div>
 
             </div>
@@ -474,9 +609,26 @@ function App() {
                           <tr key={index}>
 
                             <td>
-                              {
-                                item.alert_type
-                              }
+                              <div className="incident-name-cell">
+                                {
+                                  item.alert_type
+                                }
+                                <button 
+                                  className="incident-chat-btn"
+                                  onClick={() => handleIncidentChat(item.alert_type, item.id)}
+                                  title="Analyze with AI"
+                                >
+                                  <MessageSquare size={16} />
+                                </button>
+                                <button 
+                                  className="incident-chat-btn delete-btn"
+                                  onClick={() => handleDeleteIncident(item.id)}
+                                  title="Delete Incident"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+
+                              </div>
                             </td>
 
                             <td>
@@ -564,6 +716,8 @@ function App() {
 
                 )
               )}
+
+              <div ref={chatEndRef} />
 
             </div>
 
@@ -819,6 +973,8 @@ function App() {
               </div>
 
             )}
+
+            <div ref={floatingChatEndRef} />
 
           </div>
 

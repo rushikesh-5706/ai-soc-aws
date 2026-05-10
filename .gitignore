@@ -1,13 +1,32 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
 venv/
+.venv/
 
 # Node
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Mac
-.DS_Store
+# Build artifacts — don't commit built/zipped files
+frontend/soc-dashboard/build/
+frontend/soc-dashboard/build.zip
+frontend/soc-dashboard/coverage/
 
-# Environment
+# Environment & secrets
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
