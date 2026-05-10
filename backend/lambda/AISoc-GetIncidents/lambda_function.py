@@ -1,13 +1,17 @@
 import json
 import boto3
+import os
 from boto3.dynamodb.conditions import Key
+
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+TABLE_NAME = os.environ.get("DYNAMODB_TABLE", "AISoc-Incidents")
 
 dynamodb = boto3.resource(
     'dynamodb',
-    region_name='us-east-1'
+    region_name=AWS_REGION
 )
 
-table = dynamodb.Table('AISoc-Incidents')
+table = dynamodb.Table(TABLE_NAME)
 
 def lambda_handler(event, context):
 

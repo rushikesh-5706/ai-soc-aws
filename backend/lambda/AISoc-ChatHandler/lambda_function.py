@@ -42,7 +42,7 @@ def lambda_handler(event, context):
         # Bedrock Runtime Client
         bedrock_agent_runtime = boto3.client(
             'bedrock-agent-runtime',
-            region_name='us-east-1'
+            region_name=os.environ.get('AWS_REGION', 'us-east-1')
         )
 
         # Agent Details

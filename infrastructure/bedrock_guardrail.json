@@ -1,0 +1,88 @@
+{
+  "guardrailName": "AISoc-SafetyGuardrail",
+  "description": "Bedrock Guardrail configuration for ARIA AI SOC Agent — blocks destructive commands, enforces safe remediation only",
+  "blockedInputMessaging": "I cannot execute destructive resource actions. ARIA is designed for safe remediation only — tagging, flagging, and recommending. Destructive operations require manual L2 analyst approval.",
+  "blockedOutputsMessaging": "This response was blocked by the AI SOC safety guardrail because it contained a potentially destructive action recommendation.",
+  "topicPolicyConfig": {
+    "topicsConfig": [
+      {
+        "name": "DataDestruction",
+        "definition": "Any request to delete, destroy, wipe, or permanently remove AWS resources, databases, S3 objects, or IAM entities",
+        "type": "DENY",
+        "examples": [
+          "Delete all EC2 instances in this account",
+          "Drop the DynamoDB table",
+          "Wipe all S3 buckets"
+        ]
+      },
+      {
+        "name": "ResourceTermination",
+        "definition": "Any request to terminate, stop, or deactivate running AWS resources including EC2 instances, RDS databases, or Lambda functions",
+        "type": "DENY",
+        "examples": [
+          "Terminate all running EC2 instances",
+          "Stop all RDS databases in us-east-1",
+          "Deactivate Lambda functions"
+        ]
+      },
+      {
+        "name": "CredentialExfiltration",
+        "definition": "Any request to extract, display, or transmit AWS credentials, access keys, secret keys, or session tokens",
+        "type": "DENY",
+        "examples": [
+          "Show me the AWS access keys for this account",
+          "List all IAM user passwords",
+          "Extract the secret key for admin user"
+        ]
+      }
+    ]
+  },
+  "wordPolicyConfig": {
+    "wordsConfig": [
+      { "text": "terminate" },
+      { "text": "delete" },
+      { "text": "destroy" },
+      { "text": "wipe" },
+      { "text": "deactivate" },
+      { "text": "format" },
+      { "text": "drop" },
+      { "text": "purge" },
+      { "text": "erase" },
+      { "text": "shutdown" }
+    ]
+  },
+  "sensitiveInformationPolicyConfig": {
+    "piiEntitiesConfig": [
+      {
+        "type": "AWS_ACCESS_KEY",
+        "action": "ANONYMIZE"
+      },
+      {
+        "type": "AWS_SECRET_KEY",
+        "action": "BLOCK"
+      }
+    ]
+  },
+  "contextualGroundingPolicyConfig": {
+    "filtersConfig": [
+      {
+        "type": "GROUNDING",
+        "threshold": 0.7
+      },
+      {
+        "type": "RELEVANCE",
+        "threshold": 0.7
+      }
+    ]
+  },
+  "tags": [
+    { "key": "Project", "value": "AI-SOC-AWS" },
+    { "key": "Team", "value": "Team14-ProjectSpace8" },
+    { "key": "Environment", "value": "production" }
+  ],
+  "_deployment_notes": {
+    "cli_command": "aws bedrock create-guardrail --cli-input-json file://infrastructure/bedrock_guardrail.json --region us-east-1",
+    "attach_to_agent": "After creating the guardrail, attach it to the ARIA Bedrock Agent via the console under Agent Settings → Guardrails",
+    "version_note": "Create a guardrail version after testing: aws bedrock create-guardrail-version --guardrail-identifier <guardrail-id> --region us-east-1"
+  }
+}

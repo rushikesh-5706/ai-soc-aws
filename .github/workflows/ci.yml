@@ -84,6 +84,9 @@ jobs:
           echo "Validating backend/agent/openapi_schema.json..."
           python3 -c "import json; json.load(open('backend/agent/openapi_schema.json'))"
 
+          echo "Validating infrastructure/bedrock_guardrail.json..."
+          python3 -c "import json; json.load(open('infrastructure/bedrock_guardrail.json'))"
+
           echo "All JSON files valid ✅"
 
       - name: Validate mock alert payloads
@@ -139,6 +142,8 @@ jobs:
             "docs/DEPLOYMENT.md"
             "docs/API_REFERENCE.md"
             "docs/test_execution_report.md"
+            "infrastructure/bedrock_guardrail.json"
+            "tests/test_lambdas.py"
             ".github/workflows/ci.yml"
           )
 
@@ -229,3 +234,25 @@ jobs:
             echo "ERROR: Build directory not found"
             exit 1
           fi
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 6: Run unit tests
+  # ─────────────────────────────────────────────────────────────────
+  run-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install boto3 pytest
+
+      - name: Run unit tests
+        run: python -m pytest tests/test_lambdas.py -v

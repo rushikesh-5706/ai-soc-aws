@@ -1,6 +1,7 @@
 import json
 import boto3
 import datetime
+import os
 
 def lambda_handler(event, context):
     print(f"GetLogs invoked with event: {json.dumps(event)}")
@@ -18,7 +19,7 @@ def lambda_handler(event, context):
 
     logs = []
     try:
-        cloudtrail_client = boto3.client("cloudtrail", region_name="us-east-1")
+        cloudtrail_client = boto3.client("cloudtrail", region_name=os.environ.get("AWS_REGION", "us-east-1"))
         end_time   = datetime.datetime.utcnow()
         start_time = end_time - datetime.timedelta(hours=time_window_hours)
 

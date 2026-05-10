@@ -1,20 +1,24 @@
 import json
 import boto3
 import uuid
+import os
 
 def lambda_handler(event, context):
 
     print("EVENT RECEIVED:")
     print(json.dumps(event))
 
+    # Region from environment variable with safe fallback
+    AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+
     bedrock_agent_runtime = boto3.client(
         'bedrock-agent-runtime',
-        region_name='us-east-1'
+        region_name=AWS_REGION
     )
 
-    # Your Bedrock Agent Details
-    AGENT_ID = "UOSNOXLWJD"
-    AGENT_ALIAS_ID = "02PQZAH3MY"
+    # Agent IDs from environment variables with safe fallback
+    AGENT_ID = os.environ.get("AGENT_ID", "UOSNOXLWJD")
+    AGENT_ALIAS_ID = os.environ.get("AGENT_ALIAS_ID", "02PQZAH3MY")
 
     # Extract EventBridge detail payload
     if 'detail' in event:
