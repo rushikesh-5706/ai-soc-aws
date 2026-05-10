@@ -1,16 +1,25 @@
 """
 Unit Tests for AI SOC Lambda Functions
-Uses unittest with moto for AWS service mocking.
+Uses unittest with importlib for clean module loading.
 Run: python -m pytest tests/test_lambdas.py -v
 """
 
 import json
 import unittest
-from unittest.mock import patch, MagicMock
 import datetime
 import uuid
 import os
 import sys
+import importlib.util
+
+
+def load_lambda(module_name, file_path):
+    """Load a Lambda module from a specific file path, bypassing module cache."""
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 
 # ---------------------------------------------------------------------------
 # Test: take_action Lambda
@@ -20,8 +29,13 @@ import sys
 class TestTakeActionLambda(unittest.TestCase):
     """Tests for backend/lambda/take_action/lambda_function.py"""
 
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = load_lambda(
+            "take_action", "backend/lambda/take_action/lambda_function.py"
+        )
+
     def setUp(self):
-        """Set up test fixtures"""
         self.base_event = {
             "actionGroup": "soc-tools",
             "function": "take_action",
@@ -36,10 +50,7 @@ class TestTakeActionLambda(unittest.TestCase):
 
     def test_take_action_returns_bedrock_format(self):
         """Verify response follows Bedrock Action Group format"""
-        sys.path.insert(0, "backend/lambda/take_action")
-        from lambda_function import lambda_handler
-
-        response = lambda_handler(self.base_event, None)
+        response = self.mod.lambda_handler(self.base_event, None)
 
         self.assertEqual(response["messageVersion"], "1.0")
         self.assertIn("response", response)
@@ -52,15 +63,10 @@ class TestTakeActionLambda(unittest.TestCase):
         self.assertEqual(body["resource_id"], "i-0abc123mock456")
         self.assertEqual(body["severity"], "HIGH")
 
-        sys.path.pop(0)
-
     def test_take_action_default_parameters(self):
         """Verify defaults when parameters are missing"""
-        sys.path.insert(0, "backend/lambda/take_action")
-        from lambda_function import lambda_handler
-
         minimal_event = {"parameters": []}
-        response = lambda_handler(minimal_event, None)
+        response = self.mod.lambda_handler(minimal_event, None)
         body = json.loads(
             response["response"]["functionResponse"]["responseBody"]["TEXT"]["body"]
         )
@@ -68,8 +74,6 @@ class TestTakeActionLambda(unittest.TestCase):
         self.assertEqual(body["severity"], "LOW")
         self.assertEqual(body["resource_type"], "UNKNOWN")
         self.assertEqual(body["action_taken"], "RECOMMENDATION_ONLY")
-
-        sys.path.pop(0)
 
 
 # ---------------------------------------------------------------------------
@@ -80,55 +84,41 @@ class TestTakeActionLambda(unittest.TestCase):
 class TestGetLogsLambda(unittest.TestCase):
     """Tests for backend/lambda/get_logs/lambda_function.py"""
 
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = load_lambda(
+            "get_logs", "backend/lambda/get_logs/lambda_function.py"
+        )
+
     def test_mock_ec2_logs_generated(self):
         """Verify mock EC2 logs are generated when CloudTrail is unavailable"""
-        sys.path.insert(0, "backend/lambda/get_logs")
-        from lambda_function import generate_mock_logs
-
-        logs = generate_mock_logs("i-0abc123mock456", "EC2")
+        logs = self.mod.generate_mock_logs("i-0abc123mock456", "EC2")
 
         self.assertGreater(len(logs), 0)
         self.assertEqual(logs[0]["event_source"], "ec2.amazonaws.com")
         self.assertEqual(logs[0]["data_source"], "mock")
 
-        sys.path.pop(0)
-
     def test_mock_iam_logs_generated(self):
         """Verify mock IAM logs contain privilege escalation events"""
-        sys.path.insert(0, "backend/lambda/get_logs")
-        from lambda_function import generate_mock_logs
-
-        logs = generate_mock_logs("AIDA-MOCK-USER", "IAM")
+        logs = self.mod.generate_mock_logs("AIDA-MOCK-USER", "IAM")
 
         self.assertGreater(len(logs), 0)
         event_names = [log["event_name"] for log in logs]
         self.assertIn("CreateAccessKey", event_names)
         self.assertIn("AttachUserPolicy", event_names)
 
-        sys.path.pop(0)
-
     def test_analyze_suspicious_pattern(self):
         """Verify pattern analysis flags privileged actions as SUSPICIOUS"""
-        sys.path.insert(0, "backend/lambda/get_logs")
-        from lambda_function import analyze_log_patterns, generate_mock_logs
-
-        logs = generate_mock_logs("i-0abc123mock456", "EC2")
-        analysis = analyze_log_patterns(logs, "i-0abc123mock456", "EC2")
+        logs = self.mod.generate_mock_logs("i-0abc123mock456", "EC2")
+        analysis = self.mod.analyze_log_patterns(logs, "i-0abc123mock456", "EC2")
 
         self.assertEqual(analysis["pattern"], "SUSPICIOUS")
         self.assertGreater(len(analysis["suspicious_indicators"]), 0)
 
-        sys.path.pop(0)
-
     def test_analyze_empty_logs(self):
         """Verify empty logs return NO_LOGS pattern"""
-        sys.path.insert(0, "backend/lambda/get_logs")
-        from lambda_function import analyze_log_patterns
-
-        analysis = analyze_log_patterns([], "i-test", "EC2")
+        analysis = self.mod.analyze_log_patterns([], "i-test", "EC2")
         self.assertEqual(analysis["pattern"], "NO_LOGS")
-
-        sys.path.pop(0)
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +131,6 @@ class TestSaveIncidentLambda(unittest.TestCase):
 
     def test_status_logic_quarantine(self):
         """Verify QUARANTINE_TAG_APPLIED sets status to INVESTIGATING"""
-        # Test the status logic directly
         action_taken = "QUARANTINE_TAG_APPLIED"
         if action_taken in ("NONE", "RECOMMEND_ONLY", "RECOMMENDATION_ONLY"):
             status = "OPEN"
@@ -226,36 +215,32 @@ class TestAlertTriggerLambda(unittest.TestCase):
 class TestChatHandlerLambda(unittest.TestCase):
     """Tests for backend/lambda/AISoc-ChatHandler/lambda_function.py"""
 
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = load_lambda(
+            "chat_handler", "backend/lambda/AISoc-ChatHandler/lambda_function.py"
+        )
+
     def test_empty_message_returns_400(self):
         """Verify empty message returns 400 Bad Request"""
-        sys.path.insert(0, "backend/lambda/AISoc-ChatHandler")
-        from lambda_function import lambda_handler
-
         event = {
             "httpMethod": "POST",
             "body": json.dumps({"message": ""}),
         }
 
-        response = lambda_handler(event, None)
+        response = self.mod.lambda_handler(event, None)
         self.assertEqual(response["statusCode"], 400)
 
         body = json.loads(response["body"])
         self.assertIn("error", body)
 
-        sys.path.pop(0)
-
     def test_cors_options_request(self):
         """Verify OPTIONS request returns 200 with CORS headers"""
-        sys.path.insert(0, "backend/lambda/AISoc-ChatHandler")
-        from lambda_function import lambda_handler
-
         event = {"httpMethod": "OPTIONS"}
-        response = lambda_handler(event, None)
+        response = self.mod.lambda_handler(event, None)
 
         self.assertEqual(response["statusCode"], 200)
         self.assertEqual(response["headers"]["Access-Control-Allow-Origin"], "*")
-
-        sys.path.pop(0)
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +291,6 @@ class TestInfrastructureFiles(unittest.TestCase):
         self.assertIn("wordPolicyConfig", guardrail)
         topics = guardrail["topicPolicyConfig"]["topicsConfig"]
         self.assertGreater(len(topics), 0)
-        # Verify all topics are DENY type
         for topic in topics:
             self.assertEqual(topic["type"], "DENY")
 
