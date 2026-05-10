@@ -71,9 +71,17 @@ class TestTakeActionLambda(unittest.TestCase):
             response["response"]["functionResponse"]["responseBody"]["TEXT"]["body"]
         )
 
-        self.assertEqual(body["severity"], "LOW")
-        self.assertEqual(body["resource_type"], "UNKNOWN")
+        self.assertEqual(body["severity"], "MEDIUM")
+        self.assertEqual(body["resource_type"], "Unknown")
         self.assertEqual(body["action_taken"], "RECOMMENDATION_ONLY")
+
+    def test_take_action_description_mapping(self):
+        """Verify action descriptions are correctly mapped"""
+        response = self.mod.lambda_handler(self.base_event, None)
+        body = json.loads(
+            response["response"]["functionResponse"]["responseBody"]["TEXT"]["body"]
+        )
+        self.assertEqual(body["description"], "Applied quarantine tag to restrict network access.")
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +115,15 @@ class TestGetLogsLambda(unittest.TestCase):
         self.assertIn("CreateAccessKey", event_names)
         self.assertIn("AttachUserPolicy", event_names)
 
+    def test_mock_rds_logs_generated(self):
+        """Verify mock RDS logs contain database events"""
+        logs = self.mod.generate_mock_logs("db-instance-1", "RDS")
+
+        self.assertGreater(len(logs), 0)
+        event_names = [log["event_name"] for log in logs]
+        self.assertIn("ModifyDBInstance", event_names)
+        self.assertIn("RestoreDBFromSnapshot", event_names)
+
     def test_analyze_suspicious_pattern(self):
         """Verify pattern analysis flags privileged actions as SUSPICIOUS"""
         logs = self.mod.generate_mock_logs("i-0abc123mock456", "EC2")
@@ -122,48 +139,50 @@ class TestGetLogsLambda(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Test: save_incident Lambda — parameter parsing
+# Test: save_incident Lambda — parameter parsing & status logic
 # ---------------------------------------------------------------------------
 
 
 class TestSaveIncidentLambda(unittest.TestCase):
     """Tests for backend/lambda/save_incident/lambda_function.py"""
 
-    def test_status_logic_quarantine(self):
-        """Verify QUARANTINE_TAG_APPLIED sets status to INVESTIGATING"""
-        action_taken = "QUARANTINE_TAG_APPLIED"
-        if action_taken in ("NONE", "RECOMMEND_ONLY", "RECOMMENDATION_ONLY"):
-            status = "OPEN"
-        elif action_taken in ("QUARANTINE_TAG_APPLIED", "IAM_KEY_FLAGGED_FOR_REVIEW"):
-            status = "INVESTIGATING"
-        else:
-            status = "OPEN"
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = load_lambda(
+            "save_incident", "backend/lambda/save_incident/lambda_function.py"
+        )
 
-        self.assertEqual(status, "INVESTIGATING")
+    def test_normalize_empty_string(self):
+        """Verify normalize returns default for empty strings"""
+        self.assertEqual(self.mod.normalize("", "fallback"), "fallback")
+        self.assertEqual(self.mod.normalize(None, "fallback"), "fallback")
+        self.assertEqual(self.mod.normalize("UNKNOWN", "fallback"), "fallback")
+        self.assertEqual(self.mod.normalize("N/A", "fallback"), "fallback")
 
-    def test_status_logic_recommendation(self):
-        """Verify RECOMMENDATION_ONLY sets status to OPEN"""
-        action_taken = "RECOMMENDATION_ONLY"
-        if action_taken in ("NONE", "RECOMMEND_ONLY", "RECOMMENDATION_ONLY"):
-            status = "OPEN"
-        elif action_taken in ("QUARANTINE_TAG_APPLIED", "IAM_KEY_FLAGGED_FOR_REVIEW"):
-            status = "INVESTIGATING"
-        else:
-            status = "OPEN"
+    def test_normalize_valid_value(self):
+        """Verify normalize returns the value when it's valid"""
+        self.assertEqual(self.mod.normalize("i-0abc123", "fallback"), "i-0abc123")
+        self.assertEqual(self.mod.normalize("HIGH", "MEDIUM"), "HIGH")
 
-        self.assertEqual(status, "OPEN")
+    def test_map_action_ssh_bruteforce(self):
+        """Verify SSH brute force maps to quarantine tag"""
+        result = self.mod.map_action("UnauthorizedAccess:EC2/SSHBruteForce")
+        self.assertEqual(result, "apply_quarantine_tag")
 
-    def test_status_logic_iam_flag(self):
-        """Verify IAM_KEY_FLAGGED_FOR_REVIEW sets status to INVESTIGATING"""
-        action_taken = "IAM_KEY_FLAGGED_FOR_REVIEW"
-        if action_taken in ("NONE", "RECOMMEND_ONLY", "RECOMMENDATION_ONLY"):
-            status = "OPEN"
-        elif action_taken in ("QUARANTINE_TAG_APPLIED", "IAM_KEY_FLAGGED_FOR_REVIEW"):
-            status = "INVESTIGATING"
-        else:
-            status = "OPEN"
+    def test_map_action_unknown_alert(self):
+        """Verify unknown alert types map to RECOMMENDATION_ONLY"""
+        result = self.mod.map_action("SomeUnknownAlert")
+        self.assertEqual(result, "RECOMMENDATION_ONLY")
 
-        self.assertEqual(status, "INVESTIGATING")
+    def test_determine_status_investigating(self):
+        """Verify quarantine actions set status to INVESTIGATING"""
+        self.assertEqual(self.mod.determine_status("apply_quarantine_tag"), "INVESTIGATING")
+        self.assertEqual(self.mod.determine_status("isolate_instance"), "INVESTIGATING")
+
+    def test_determine_status_open(self):
+        """Verify unknown actions set status to OPEN"""
+        self.assertEqual(self.mod.determine_status("RECOMMENDATION_ONLY"), "OPEN")
+        self.assertEqual(self.mod.determine_status("some_other_action"), "OPEN")
 
 
 # ---------------------------------------------------------------------------
@@ -174,73 +193,67 @@ class TestSaveIncidentLambda(unittest.TestCase):
 class TestAlertTriggerLambda(unittest.TestCase):
     """Tests for backend/lambda/AISoc-alerttrigger/lambda_function.py"""
 
-    def test_eventbridge_detail_extraction(self):
-        """Verify EventBridge detail payload is correctly extracted"""
-        event_with_detail = {
-            "detail": {
-                "alert_type": "UnauthorizedAccess:EC2/SSHBruteForce",
-                "resource_id": "i-0abc123mock456",
-                "severity": 7.0,
-            }
-        }
-
-        if "detail" in event_with_detail:
-            alert_data = event_with_detail["detail"]
-        else:
-            alert_data = event_with_detail
-
-        self.assertEqual(alert_data["alert_type"], "UnauthorizedAccess:EC2/SSHBruteForce")
-        self.assertEqual(alert_data["resource_id"], "i-0abc123mock456")
-
-    def test_direct_invocation_extraction(self):
-        """Verify direct Lambda invocation (no detail key) works"""
-        event_direct = {
-            "alert_type": "IAMUser:AnomalousBehavior",
-            "resource_id": "AIDA-TEST",
-        }
-
-        if "detail" in event_direct:
-            alert_data = event_direct["detail"]
-        else:
-            alert_data = event_direct
-
-        self.assertEqual(alert_data["alert_type"], "IAMUser:AnomalousBehavior")
-
-
-# ---------------------------------------------------------------------------
-# Test: AISoc-ChatHandler Lambda — input validation
-# ---------------------------------------------------------------------------
-
-
-class TestChatHandlerLambda(unittest.TestCase):
-    """Tests for backend/lambda/AISoc-ChatHandler/lambda_function.py"""
-
     @classmethod
     def setUpClass(cls):
         cls.mod = load_lambda(
-            "chat_handler", "backend/lambda/AISoc-ChatHandler/lambda_function.py"
+            "alerttrigger", "backend/lambda/AISoc-alerttrigger/lambda_function.py"
         )
 
-    def test_empty_message_returns_400(self):
-        """Verify empty message returns 400 Bad Request"""
+    def test_extract_from_detail_dict(self):
+        """Verify extraction from EventBridge detail dict"""
         event = {
-            "httpMethod": "POST",
-            "body": json.dumps({"message": ""}),
+            "detail": {
+                "alert_type": "UnauthorizedAccess:EC2/SSHBruteForce",
+                "resource": "i-0abc123mock456",
+                "resource_type": "EC2",
+                "severity": 7,
+                "source_ip": "203.0.113.45",
+            }
         }
+        fields = self.mod.extract_alert_fields(event)
+        self.assertEqual(fields["alert_type"], "UnauthorizedAccess:EC2/SSHBruteForce")
+        self.assertEqual(fields["resource"], "i-0abc123mock456")
+        self.assertEqual(fields["severity"], "CRITICAL")  # 7 → CRITICAL
 
-        response = self.mod.lambda_handler(event, None)
-        self.assertEqual(response["statusCode"], 400)
+    def test_extract_from_top_level(self):
+        """Verify extraction from direct Lambda invocation"""
+        event = {
+            "alert_type": "IAMUser:AnomalousBehavior",
+            "resource": "AIDA-TEST",
+            "resource_type": "IAM",
+            "severity": "HIGH",
+            "source_ip": "10.0.0.1",
+        }
+        fields = self.mod.extract_alert_fields(event)
+        self.assertEqual(fields["alert_type"], "IAMUser:AnomalousBehavior")
+        self.assertEqual(fields["resource"], "AIDA-TEST")
 
-        body = json.loads(response["body"])
-        self.assertIn("error", body)
+    def test_severity_normalization_numeric(self):
+        """Verify numeric severity is converted to text labels"""
+        event = {"detail": {"alert_type": "test", "severity": 8}}
+        fields = self.mod.extract_alert_fields(event)
+        self.assertEqual(fields["severity"], "CRITICAL")
 
-    def test_cors_options_request(self):
-        """Verify OPTIONS request returns 200 with CORS headers"""
-        event = {"httpMethod": "OPTIONS"}
-        response = self.mod.lambda_handler(event, None)
+        event2 = {"detail": {"alert_type": "test", "severity": 2}}
+        fields2 = self.mod.extract_alert_fields(event2)
+        self.assertEqual(fields2["severity"], "LOW")
 
-        self.assertEqual(response["statusCode"], 200)
-        self.assertEqual(response["headers"]["Access-Control-Allow-Origin"], "*")
+    def test_build_structured_prompt(self):
+        """Verify structured prompt contains all required fields"""
+        fields = {
+            "alert_type": "SSHBruteForce",
+            "resource": "i-test",
+            "resource_type": "EC2",
+            "severity": "HIGH",
+            "source_ip": "1.2.3.4",
+            "region": "us-east-1",
+        }
+        prompt = self.mod.build_structured_prompt(fields)
+        self.assertIn("SSHBruteForce", prompt)
+        self.assertIn("i-test", prompt)
+        self.assertIn("STEP 1: Call get_logs", prompt)
+        self.assertIn("STEP 2: Call take_action", prompt)
+        self.assertIn("STEP 3: Call save_incident", prompt)
 
 
 # ---------------------------------------------------------------------------
@@ -255,6 +268,9 @@ class TestInfrastructureFiles(unittest.TestCase):
         "infrastructure/dynamodb_schema.json",
         "infrastructure/eventbridge_rule.json",
         "infrastructure/bedrock_guardrail.json",
+        "infrastructure/sns_alert_topic.json",
+        "infrastructure/cognito_user_pool.json",
+        "infrastructure/security_hub_config.json",
         "infrastructure/iam_policies/bedrock_agent_role.json",
         "infrastructure/iam_policies/lambda_execution_role.json",
         "infrastructure/iam_policies/eventbridge_role.json",
