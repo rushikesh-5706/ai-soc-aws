@@ -87,6 +87,15 @@ jobs:
           echo "Validating infrastructure/bedrock_guardrail.json..."
           python3 -c "import json; json.load(open('infrastructure/bedrock_guardrail.json'))"
 
+          echo "Validating infrastructure/sns_alert_topic.json..."
+          python3 -c "import json; json.load(open('infrastructure/sns_alert_topic.json'))"
+
+          echo "Validating infrastructure/cognito_user_pool.json..."
+          python3 -c "import json; json.load(open('infrastructure/cognito_user_pool.json'))"
+
+          echo "Validating infrastructure/security_hub_config.json..."
+          python3 -c "import json; json.load(open('infrastructure/security_hub_config.json'))"
+
           echo "All JSON files valid ✅"
 
       - name: Validate mock alert payloads
@@ -143,6 +152,9 @@ jobs:
             "docs/API_REFERENCE.md"
             "docs/test_execution_report.md"
             "infrastructure/bedrock_guardrail.json"
+            "infrastructure/sns_alert_topic.json"
+            "infrastructure/cognito_user_pool.json"
+            "infrastructure/security_hub_config.json"
             "tests/test_lambdas.py"
             ".github/workflows/ci.yml"
           )

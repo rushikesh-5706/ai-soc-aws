@@ -1,0 +1,94 @@
+{
+  "Type": "AWS::SecurityHub::Hub",
+  "Description": "AWS Security Hub integration configuration for AI SOC — aggregates findings from GuardDuty, Inspector, Config, and Macie into a unified EventBridge pipeline for ARIA to process",
+  "Properties": {
+    "HubName": "AISoc-SecurityHub",
+    "EnableDefaultStandards": true,
+    "AutoEnableControls": true,
+    "ControlFindingGenerator": "SECURITY_CONTROL",
+    "Tags": {
+      "Project": "AI-SOC-AWS",
+      "Team": "Team14-ProjectSpace8"
+    }
+  },
+  "Integrations": {
+    "GuardDuty": {
+      "Enabled": true,
+      "Description": "Amazon GuardDuty findings are automatically imported into Security Hub",
+      "FindingTypes": [
+        "UnauthorizedAccess:EC2/SSHBruteForce",
+        "CryptoCurrency:EC2/BitcoinTool.B!DNS",
+        "Recon:EC2/PortProbeUnprotectedPort",
+        "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration",
+        "PrivilegeEscalation:IAMUser/AdministrativePermissions"
+      ]
+    },
+    "Inspector": {
+      "Enabled": true,
+      "Description": "Amazon Inspector vulnerability findings for EC2 and Lambda",
+      "ScanTypes": ["EC2", "LAMBDA"]
+    },
+    "Config": {
+      "Enabled": true,
+      "Description": "AWS Config compliance findings for security rule violations"
+    },
+    "Macie": {
+      "Enabled": true,
+      "Description": "Amazon Macie sensitive data discovery findings for S3 buckets"
+    }
+  },
+  "EventBridgeRule": {
+    "RuleName": "AISoc-SecurityHubRouter",
+    "Description": "Routes Security Hub findings to the AISoc-alerttrigger Lambda for ARIA processing",
+    "EventPattern": {
+      "source": ["aws.securityhub"],
+      "detail-type": ["Security Hub Findings - Imported"],
+      "detail": {
+        "findings": {
+          "Severity": {
+            "Label": ["CRITICAL", "HIGH"]
+          }
+        }
+      }
+    },
+    "Target": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:AISoc-alerttrigger"
+  },
+  "AutomationRules": [
+    {
+      "RuleName": "AutoArchiveLowSeverity",
+      "Description": "Automatically archive LOW severity findings to reduce noise",
+      "Criteria": {
+        "SeverityLabel": ["LOW", "INFORMATIONAL"]
+      },
+      "Actions": [
+        {
+          "Type": "FINDING_FIELDS_UPDATE",
+          "FindingFieldsUpdate": {
+            "Workflow": { "Status": "SUPPRESSED" }
+          }
+        }
+      ]
+    },
+    {
+      "RuleName": "EscalateCriticalToARIA",
+      "Description": "Ensure all CRITICAL findings are routed to ARIA within 60 seconds",
+      "Criteria": {
+        "SeverityLabel": ["CRITICAL"]
+      },
+      "Actions": [
+        {
+          "Type": "FINDING_FIELDS_UPDATE",
+          "FindingFieldsUpdate": {
+            "Note": { "Text": "Auto-escalated to ARIA for immediate triage" }
+          }
+        }
+      ]
+    }
+  ],
+  "_deployment_notes": {
+    "cli_enable": "aws securityhub enable-security-hub --enable-default-standards --region us-east-1",
+    "cli_enable_integration": "aws securityhub enable-import-findings-for-product --product-arn arn:aws:securityhub:us-east-1::product/aws/guardduty --region us-east-1",
+    "prerequisite": "GuardDuty must be enabled first (see docs/DEPLOYMENT.md Phase 7)",
+    "cost_note": "Security Hub has a 30-day free trial. After trial, pricing is per finding per month."
+  }
+}

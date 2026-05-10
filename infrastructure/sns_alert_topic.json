@@ -1,0 +1,49 @@
+{
+  "Type": "AWS::SNS::Topic",
+  "Description": "SNS Topic for AI SOC critical incident notifications — sends alerts to security team via email/Slack when ARIA classifies an incident as CRITICAL severity",
+  "Properties": {
+    "TopicName": "AISoc-CriticalAlerts",
+    "DisplayName": "AI SOC Critical Security Alerts",
+    "Tags": [
+      { "Key": "Project", "Value": "AI-SOC-AWS" },
+      { "Key": "Team", "Value": "Team14-ProjectSpace8" },
+      { "Key": "Environment", "Value": "production" }
+    ]
+  },
+  "Subscriptions": [
+    {
+      "Protocol": "email",
+      "Endpoint": "soc-team@example.com",
+      "Description": "L2 Security Analyst email notification for CRITICAL incidents"
+    },
+    {
+      "Protocol": "https",
+      "Endpoint": "https://hooks.slack.com/services/YOUR_WEBHOOK_URL",
+      "Description": "Slack #soc-alerts channel webhook for real-time notifications"
+    }
+  ],
+  "LambdaIntegration": {
+    "Description": "To integrate with save_incident Lambda, add SNS publish call after DynamoDB put_item when severity == CRITICAL",
+    "RequiredIAMPermission": "sns:Publish",
+    "SampleCode": "sns_client.publish(TopicArn=TOPIC_ARN, Subject='CRITICAL: ' + alert_type, Message=json.dumps(incident))",
+    "EnvironmentVariable": "SNS_TOPIC_ARN"
+  },
+  "MessageFormat": {
+    "Subject": "🚨 AI SOC CRITICAL ALERT: {alert_type}",
+    "Body": {
+      "incident_id": "{incident_id}",
+      "alert_type": "{alert_type}",
+      "severity": "CRITICAL",
+      "resource_id": "{resource_id}",
+      "action_taken": "{action_taken}",
+      "agent_reasoning": "{agent_reasoning}",
+      "timestamp": "{timestamp}",
+      "dashboard_url": "https://your-amplify-url.amplifyapp.com"
+    }
+  },
+  "_deployment_notes": {
+    "cli_create": "aws sns create-topic --name AISoc-CriticalAlerts --region us-east-1",
+    "cli_subscribe_email": "aws sns subscribe --topic-arn arn:aws:sns:us-east-1:ACCOUNT_ID:AISoc-CriticalAlerts --protocol email --notification-endpoint soc-team@example.com",
+    "cli_subscribe_slack": "aws sns subscribe --topic-arn arn:aws:sns:us-east-1:ACCOUNT_ID:AISoc-CriticalAlerts --protocol https --notification-endpoint https://hooks.slack.com/services/YOUR_WEBHOOK_URL"
+  }
+}

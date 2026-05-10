@@ -1,0 +1,93 @@
+{
+  "Type": "AWS::Cognito::UserPool",
+  "Description": "Amazon Cognito User Pool for SOC Dashboard authentication — provides role-based access control for security analysts accessing the AI SOC React dashboard",
+  "Properties": {
+    "UserPoolName": "AISoc-AnalystPool",
+    "AutoVerifiedAttributes": ["email"],
+    "UsernameAttributes": ["email"],
+    "MfaConfiguration": "OPTIONAL",
+    "Policies": {
+      "PasswordPolicy": {
+        "MinimumLength": 12,
+        "RequireUppercase": true,
+        "RequireLowercase": true,
+        "RequireNumbers": true,
+        "RequireSymbols": true,
+        "TemporaryPasswordValidityDays": 1
+      }
+    },
+    "Schema": [
+      {
+        "Name": "email",
+        "AttributeDataType": "String",
+        "Required": true,
+        "Mutable": true
+      },
+      {
+        "Name": "role",
+        "AttributeDataType": "String",
+        "Required": false,
+        "Mutable": true,
+        "StringAttributeConstraints": {
+          "AllowedValues": ["L1_ANALYST", "L2_ANALYST", "SOC_MANAGER", "ADMIN"]
+        }
+      },
+      {
+        "Name": "team",
+        "AttributeDataType": "String",
+        "Required": false,
+        "Mutable": true
+      }
+    ],
+    "Tags": [
+      { "Key": "Project", "Value": "AI-SOC-AWS" },
+      { "Key": "Team", "Value": "Team14-ProjectSpace8" }
+    ]
+  },
+  "UserPoolClient": {
+    "ClientName": "AISoc-DashboardClient",
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH",
+      "ALLOW_USER_SRP_AUTH"
+    ],
+    "SupportedIdentityProviders": ["COGNITO"],
+    "CallbackURLs": [
+      "https://your-amplify-url.amplifyapp.com/callback",
+      "http://localhost:3000/callback"
+    ],
+    "LogoutURLs": [
+      "https://your-amplify-url.amplifyapp.com/logout",
+      "http://localhost:3000/logout"
+    ]
+  },
+  "UserGroups": [
+    {
+      "GroupName": "L1-Analysts",
+      "Description": "Junior analysts — can view incidents and chat with ARIA",
+      "Precedence": 3
+    },
+    {
+      "GroupName": "L2-Analysts",
+      "Description": "Senior analysts — can approve remediation actions and close incidents",
+      "Precedence": 2
+    },
+    {
+      "GroupName": "SOC-Managers",
+      "Description": "SOC managers — full access including analytics and configuration",
+      "Precedence": 1
+    }
+  ],
+  "APIGatewayIntegration": {
+    "Description": "Attach Cognito User Pool as an Authorizer to AISoc-API in API Gateway to protect /incidents and /chat endpoints",
+    "AuthorizerType": "COGNITO_USER_POOLS",
+    "IdentitySource": "method.request.header.Authorization",
+    "RequiredScopes": ["openid", "email"]
+  },
+  "_deployment_notes": {
+    "cli_create_pool": "aws cognito-idp create-user-pool --pool-name AISoc-AnalystPool --cli-input-json file://infrastructure/cognito_user_pool.json --region us-east-1",
+    "cli_create_client": "aws cognito-idp create-user-pool-client --user-pool-id <pool-id> --client-name AISoc-DashboardClient --no-generate-secret --region us-east-1",
+    "frontend_integration": "Install aws-amplify package in React app and configure Amplify.configure({ Auth: { region, userPoolId, userPoolWebClientId } })"
+  }
+}
