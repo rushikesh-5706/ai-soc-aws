@@ -14,7 +14,7 @@
 
 *An AI-powered, fully serverless, autonomous Security Operations Center built entirely on AWS — designed to eliminate alert fatigue, autonomously triage threats, and execute safe remediation actions in real time.*
 
-[📐 Architecture](#-system-architecture) · [🚀 Deployment](#-deployment-guide) · [📡 API Reference](#-api-reference) · [🧪 Test Scenarios](#-test-scenarios) · [👥 Team](#-team)
+[🌐 Live Dashboard](https://ai-soc.d14jdkihvvk2j.amplifyapp.com/) · [📐 Architecture](#-system-architecture) · [🚀 Deployment](#-deployment-guide) · [📡 API Reference](#-api-reference) · [🧪 Test Scenarios](#-test-scenarios) · [👥 Team](#-team)
 
 </div>
 
@@ -46,7 +46,7 @@ The **AI SOC for AWS** is a lightweight, fully AWS-native, serverless security a
 
 The system continuously monitors AWS infrastructure via **Amazon GuardDuty** and **Amazon EventBridge**, processes alerts through a multi-step AI reasoning pipeline, takes safe automated remediation actions, and persists a full audit trail to **Amazon DynamoDB** — all without human intervention.
 
-A **React-based SOC dashboard** hosted on **AWS Amplify** provides real-time visibility into incidents, AI analysis, and security analytics.
+A **React-based SOC dashboard** hosted on **AWS Amplify** provides real-time visibility into incidents, AI analysis, and security analytics. **[View the Live Dashboard here](https://ai-soc.d14jdkihvvk2j.amplifyapp.com/)**.
 
 | Metric | Value |
 |--------|-------|

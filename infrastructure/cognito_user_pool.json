@@ -54,11 +54,11 @@
     ],
     "SupportedIdentityProviders": ["COGNITO"],
     "CallbackURLs": [
-      "https://your-amplify-url.amplifyapp.com/callback",
+      "https://ai-soc.d14jdkihvvk2j.amplifyapp.com/callback",
       "http://localhost:3000/callback"
     ],
     "LogoutURLs": [
-      "https://your-amplify-url.amplifyapp.com/logout",
+      "https://ai-soc.d14jdkihvvk2j.amplifyapp.com/logout",
       "http://localhost:3000/logout"
     ]
   },
